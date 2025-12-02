@@ -285,12 +285,35 @@ class FeatureContext implements SnippetAcceptingContext {
 	/**
 	 * Whether tests are currently running with Xdebug step debugging enabled.
 	 *
+	 * Checks the `WP_CLI_TEST_XDEBUG` environmental variable is set and is not falsey.
+	 *
 	 * @return bool
 	 */
 	private static function running_with_xdebug() {
 		$with_xdebug = (string) getenv( 'WP_CLI_TEST_XDEBUG' );
 
-		return \in_array( $with_xdebug, [ 'true', '1' ], true );
+		return '' !== $with_xdebug
+			&& ! \in_array( $with_xdebug, [ 'false', 'FALSE', '0' ], true )
+			&& function_exists( 'xdebug_info' );
+	}
+
+	/**
+	 * Get the Xdebug `idekey` to use.
+	 *
+	 * Defaults to the string "WP_CLI_TEST_XDEBUG" or uses the value of `WP_CLI_TEST_XDEBUG` environmental variable
+	 * when it is not `true`, `TRUE` or `1`.
+	 *
+	 * @see https://xdebug.org/docs/all_settings#idekey
+	 *
+	 * @return string
+	 */
+	private static function get_xdebug_idekey() {
+		$default_idekey = 'WP_CLI_TEST_XDEBUG';
+		$env_value      = (string) getenv( 'WP_CLI_TEST_XDEBUG' );
+		if ( ! \in_array( $env_value, [ 'true', 'TRUE', '1' ], true ) ) {
+			return $env_value;
+		}
+		return $default_idekey;
 	}
 
 	/**
@@ -480,7 +503,7 @@ class FeatureContext implements SnippetAcceptingContext {
 		if ( self::running_with_xdebug() ) {
 			$env['XDEBUG_MODE']    = 'debug';
 			$env['XDEBUG_SESSION'] = '1';
-			$env['XDEBUG_CONFIG']  = 'idekey=WP_CLI_TEST_XDEBUG log_level=0';
+			$env['XDEBUG_CONFIG']  = 'idekey=' . self::get_xdebug_idekey() . ' log_level=0';
 		}
 
 		$config_path = getenv( 'WP_CLI_CONFIG_PATH' );
